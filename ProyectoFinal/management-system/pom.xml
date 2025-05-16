@@ -1,0 +1,22 @@
+management-system
+├── src
+│   ├── main
+│   │   ├── java
+│   │   │   ├── controller
+│   │   │   │   └── MainController.java
+│   │   │   ├── model
+│   │   │   │   └── User.java
+│   │   │   ├── view
+│   │   │   │   └── MainView.java
+│   │   │   ├── dao
+│   │   │   │   └── UserDAO.java
+│   │   │   ├── util
+│   │   │   │   └── DBConnection.java
+│   │   │   └── App.java
+│   │   └── resources
+│   │       └── config.properties
+│   └── test
+│       └── java
+│           └── AppTest.java
+├── pom.xml
+└── README.md

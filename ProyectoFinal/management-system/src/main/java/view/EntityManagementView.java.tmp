@@ -1,0 +1,163 @@
+package view;
+
+import model.Attribute;
+import model.Entity;
+import model.EntityTableModel;
+import javax.swing.*;
+import java.awt.*;
+import java.util.List;
+import java.util.ArrayList;
+import com.management.util.Storage;
+
+public class EntityManagementView extends JFrame {
+    private JTable entityTable;
+    private EntityTableModel tableModel;
+    private JButton createButton;
+    private List<Attribute> attributes;
+    private String selectedIdentifierField;
+
+    public EntityManagementView(List<Attribute> attributes) {
+        this.attributes = attributes;
+        this.selectedIdentifierField = "isbn"; // Default identifier for books
+        
+        // Set window properties first
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setPreferredSize(new Dimension(1000, 600));
+        
+        // Initialize components
+        initComponents();
+        setupLayout();
+        
+        // Pack before showing identifier selection
+        pack();
+        setLocationRelativeTo(null);
+    }
+
+    private void initComponents() {
+        setTitle("Sistema de Gestión de Libros");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setPreferredSize(new Dimension(1000, 600));
+
+        // Initialize table with custom cell rendering
+        tableModel = new EntityTableModel(attributes);
+        entityTable = new JTable(tableModel);
+        entityTable.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+        entityTable.setRowHeight(25); // Make rows a bit taller
+        entityTable.getTableHeader().setFont(new Font("Arial", Font.BOLD, 12));
+        
+        // Set up table columns
+        int[] columnWidths = {200, 150, 100, 100, 100, 150}; // Titulo, Autor, ISBN, Año, ID Categoria, Categoria
+        for (int i = 0; i < Math.min(columnWidths.length, entityTable.getColumnCount()); i++) {
+            entityTable.getColumnModel().getColumn(i).setPreferredWidth(columnWidths[i]);
+        }
+
+        // Create button
+        createButton = new JButton("Agregar Nuevo Libro");
+        createButton.setFont(new Font("Arial", Font.BOLD, 12));
+    }
+
+    private void setupLayout() {
+        setLayout(new BorderLayout());
+
+        // Top panel for controls
+        JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        controlPanel.add(createButton);
+        add(controlPanel, BorderLayout.NORTH);
+
+        // Table in a scroll pane
+        JScrollPane scrollPane = new JScrollPane(entityTable);
+        add(scrollPane, BorderLayout.CENTER);
+
+        pack();
+        setLocationRelativeTo(null);
+    }
+
+    public void addCreateButtonListener(java.awt.event.ActionListener listener) {
+        createButton.addActionListener(listener);
+    }
+
+    public void showCreateEntityDialog() {
+        // Create a panel with padding
+        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        
+        // Panel for input fields
+        JPanel inputPanel = new JPanel(new GridLayout(attributes.size(), 2, 5, 5));
+        List<JTextField> inputFields = new ArrayList<>();
+
+        for (Attribute attr : attributes) {
+            String labelText = attr.getName();
+            if (attr.getName().equals(selectedIdentifierField)) {
+                labelText += " (Identificador Único)";
+            }
+            
+            JLabel label = new JLabel(labelText + ":");
+            label.setFont(label.getFont().deriveFont(Font.BOLD));
+            inputPanel.add(label);
+            
+            JTextField field = new JTextField(20);
+            inputFields.add(field);
+            inputPanel.add(field);
+        }
+
+        mainPanel.add(inputPanel, BorderLayout.CENTER);
+        
+        // Add help text
+        JLabel helpText = new JLabel("El ISBN será usado como identificador único");
+        helpText.setForeground(Color.BLUE);
+        mainPanel.add(helpText, BorderLayout.NORTH);
+
+        int result = JOptionPane.showConfirmDialog(this, mainPanel, 
+            "Crear Nuevo Libro", JOptionPane.OK_CANCEL_OPTION);
+
+        if (result == JOptionPane.OK_OPTION) {
+            Entity newEntity = new Entity(tableModel.getRowCount() + 1);
+            String identifierValue = null;
+
+            for (int i = 0; i < attributes.size(); i++) {
+                Attribute attr = attributes.get(i);
+                String value = inputFields.get(i).getText().trim();
+
+                if (value.isEmpty()) {
+                    JOptionPane.showMessageDialog(this,
+                        "Por favor complete todos los campos",
+                        "Error de Validación",
+                        JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                if (attr.getName().equals(selectedIdentifierField)) {
+                    identifierValue = value;
+                }
+
+                if (attr.getType().equals("Integer")) {
+                    try {
+                        int intValue = Integer.parseInt(value);
+                        newEntity.setAttribute(attr.getName(), intValue);
+                    } catch (NumberFormatException e) {
+                        JOptionPane.showMessageDialog(this,
+                            attr.getName() + " debe ser un número entero válido",
+                            "Error de Validación",
+                            JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
+                } else {
+                    newEntity.setAttribute(attr.getName(), value);
+                }
+            }
+
+            // Check if identifier is unique
+            if (!tableModel.isUniqueIdentifier(selectedIdentifierField, identifierValue)) {
+                JOptionPane.showMessageDialog(this,
+                    "El ISBN '" + identifierValue + "' ya existe en el sistema.\n" +
+                    "Por favor ingrese un ISBN único.",
+                    "ISBN Duplicado",
+                    JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            tableModel.addEntity(newEntity);
+            Storage.saveEntities(tableModel.getEntities());
+        }
+    }
+}
